@@ -15,31 +15,28 @@
  * limitations under the License.
  */
 
-#include "FreeRTOS.h"
-#include "queue.h"
 #include <stdint.h>
 
-#include "pins.h"
 
-#ifndef K_NUM_I2CS
 #define K_NUM_I2CS 2
-#endif
 
-#ifndef DEFAULT_I2C
+/* default I2C */
 #define DEFAULT_I2C 0
-#endif
 
-#define I2C_TIMEOUT_FLAG          ((uint32_t)35)     /* 35 ms */
-#define I2C_TIMEOUT_ADDR_SLAVE    ((uint32_t)10000)  /* 10 s  */
+/* other devices */
+#define I2C_DEVICE_1 0
+#define I2C_DEVICE_2 1
 
-#define I2C_QUEUE_LEN    8
-
-#define I2C_ADDRESS        0x30F
 
 typedef enum {
-    K_I2C1 = 0,
+    K_I2CDev1 = 0,
+	K_I2CDev2
+} KI2CDevNum;
+
+typedef enum {
+	K_I2C1 = 0,
 	K_I2C2
-} KI2CNum;
+} KI2CBusNum;
 
 typedef struct {
 	uint32_t AddressingMode;
@@ -50,34 +47,27 @@ typedef struct {
 	uint32_t NoStretchMode;
 	uint32_t OwnAddress1;
 	uint32_t OwnAddress2;
-
-    uint8_t rx_queue_len;
-    uint8_t tx_queue_len;
+	uint32_t SlaveAddress;
 } KI2CConf;
 
 typedef struct {
-	int dev;
+	KI2CBusNum bus_num;
     KI2CConf conf;
-    QueueHandle_t rx_queue;
-    QueueHandle_t tx_queue;
+    int status;
 } KI2C;
 
-
 /* functions */
-void k_i2c_init(KI2CNum i2c, KI2CConf *conf);
+void k_i2c_init(KI2CDevNum i2c, KI2CBusNum i2c_bus, KI2CConf *conf);
 KI2CConf k_i2c_conf_defaults(void);
 void k_i2c_default_init(void);
-int k_master_transmit_interrupt_i2c(KI2CNum i2c, uint16_t DevAddress, uint8_t *ptr, int len);
-int k_master_receive_interrupt_i2c(KI2CNum i2c, uint16_t DevAddress);
-int k_i2c_get_state();
-int k_i2c_get_error();
+void k_i2c_default_dev_init(KI2CDevNum i2c, KI2CBusNum i2c_bus);
+int k_master_transmit_i2c(KI2CDevNum i2c, uint8_t *ptr, int len);
+int k_master_receive_i2c(KI2CDevNum i2c, uint8_t *ptr, int len);
 
 // private APIs
-KI2C* kprv_i2c_get(KI2CNum i2c);
-void kprv_i2c_dev_init(KI2CNum i2c);
-int kprv_i2c_transmit_i2c(KI2CNum i2c, uint16_t DevAddress, uint8_t *ptr, int len);
-int kprv_i2c_receive_i2c(KI2CNum i2c, uint16_t DevAddress);
-int kprv_i2c_get_state();
-int kprv_i2c_get_error();
+KI2C* kprv_i2c_get(KI2CDevNum i2c);
+void kprv_i2c_dev_init(KI2CDevNum i2c);
+int kprv_i2c_transmit_i2c(KI2CDevNum i2c, uint8_t *ptr, int len);
+int kprv_i2c_receive_i2c(KI2CDevNum i2c, uint8_t *ptr, int len);
 
-BaseType_t queue_push(QueueHandle_t *queue, uint8_t c, TickType_t timeout, void *task_woken);
+
