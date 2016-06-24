@@ -16,62 +16,82 @@
  */
 
 #include "kubos-hal/I2C.h"
-//#include "msp430f5529-hal/I2C.h"
-
 #include <string.h>
 
 static KI2C k_i2cs[K_NUM_I2CS];
 
-KI2C* kprv_i2c_get(KI2CDevNum i2c)
+void k_i2c_init(KI2CNum i2c, KI2CConf *conf)
 {
-    return &k_i2cs[i2c];
-}
-
-void k_i2c_init(KI2CDevNum i2c, KI2CBusNum i2c_bus, KI2CConf *conf)
-{
-    KI2C *k_i2c = &k_i2cs[i2c];
+    KI2C *k_i2c = kprv_i2c_get(i2c);
+    // Need to prevent re-initialization
     memcpy(&k_i2c->conf, conf, sizeof(KI2CConf));
 
-    /* select bus */
-    k_i2c->bus_num = i2c_bus;
-    /* call device init */
+    k_i2c->bus_num = i2c;
+
+    k_i2c->i2c_lock = xSemaphoreCreateMutex();
+
     kprv_i2c_dev_init(i2c);
+}
+
+void k_i2c_terminate(KI2CNum i2c)
+{
+    kprv_i2c_dev_terminate(i2c);
 }
 
 KI2CConf k_i2c_conf_defaults(void)
 {
     return (KI2CConf) {
-        .AddressingMode = 0,
-        .ClockSpeed = 0,
-        .DualAddressMode = 0,
-        .DutyCycle = 0,
-        .GeneralCallMode = 0,
-        .NoStretchMode = 0,
-        .OwnAddress1 = 0xFE,
-        .OwnAddress2 = 0xFE,
+        .AddressingMode = K_ADDRESSINGMODE_7BIT,
+        .Role = K_MASTER,
+        .ClockSpeed = 100000
     };
 }
 
-void k_i2c_default_init(void)
+void k_i2c_default_init()
 {
     KI2CConf conf = k_i2c_conf_defaults();
-    k_i2c_init(DEFAULT_I2C, DEFAULT_I2C, &conf);
+    k_i2c_init(DEFAULT_I2C, &conf);
 }
 
-void k_i2c_default_dev_init(KI2CDevNum i2c, KI2CBusNum i2c_bus)
+void k_i2c_default_dev_init(KI2CNum i2c)
 {
     KI2CConf conf = k_i2c_conf_defaults();
-    k_i2c_init(i2c, i2c_bus, &conf);
+    k_i2c_init(i2c, &conf);
 }
 
-int k_master_transmit_i2c(KI2CDevNum i2c, uint8_t* ptr, int len)
+KI2CStatus k_i2c_write(KI2CNum i2c, uint16_t addr, uint8_t* ptr, int len)
 {
-    return kprv_i2c_transmit_i2c(i2c, ptr, len);
+    KI2C * ki2c = kprv_i2c_get(i2c);
+    KI2CStatus ret = I2C_ERROR;
+    if (ki2c->i2c_lock != NULL)
+    {
+        // Today...block indefinitely
+        if (xSemaphoreTake(ki2c->i2c_lock, (TickType_t)portMAX_DELAY) == pdTRUE)
+        {
+            ret = kprv_i2c_master_write(i2c, addr, ptr, len);
+            xSemaphoreGive(ki2c->i2c_lock);
+        }
+    }
+    return ret;
 }
 
-int k_master_receive_i2c(KI2CDevNum i2c, uint8_t *ptr, int len)
+KI2CStatus k_i2c_read(KI2CNum i2c, uint16_t addr, uint8_t* ptr, int len)
 {
-	return kprv_i2c_receive_i2c(i2c, ptr, len);
+    KI2C * ki2c = kprv_i2c_get(i2c);
+    KI2CStatus ret = I2C_ERROR;
+    if (ki2c->i2c_lock != NULL)
+    {
+        // Today...block indefinitely
+        if (xSemaphoreTake(ki2c->i2c_lock, (TickType_t)portMAX_DELAY) == pdTRUE)
+        {
+            ret = kprv_i2c_master_read(i2c, addr, ptr, len);
+            xSemaphoreGive(ki2c->i2c_lock);
+        }
+    }
+    return ret;
 }
 
-
+KI2C* kprv_i2c_get(KI2CNum i2c)
+{
+    return &k_i2cs[i2c];
+}
