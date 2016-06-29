@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "kubos-hal/I2C.h"
+#include "kubos-hal/i2c.h"
 #include <string.h>
 
 static KI2C k_i2cs[K_NUM_I2CS];
