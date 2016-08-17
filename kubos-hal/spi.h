@@ -35,13 +35,18 @@
  * @code
  * "config": {
  *   "hardware": {
- *     "spiCount": "2"
- *   }
+ *     "spi": {
+ *        "count": 3,
+ *        "defaults": {
+ *        "bus": "K_I2C1"
+ *        },
+*       },
+*     },
  * }
  * @endcode
  */
 #ifndef K_NUM_SPI
-#define K_NUM_SPI YOTTA_CFG_HARDWARE_SPICOUNT
+#define K_NUM_SPI YOTTA_CFG_HARDWARE_SPI_COUNT
 #endif
 
 /**
@@ -56,14 +61,15 @@
  * }
  * @endcode
  */
-#define DEFAULT_SPI YOTTA_CFG_HARDWARE_DEFAULTS_SPI
+#define DEFAULT_SPI YOTTA_CFG_HARDWARE_SPI_DEFAULTS_BUS
 
 /**
  * Available spi buses
  */
 typedef enum {
     K_SPI1 = 0,
-    K_SPI2
+    K_SPI2,
+    K_SPI3
 } KSPINum;
 
 /**
@@ -92,6 +98,30 @@ typedef enum {
 } SPIDataSize;
 
 /**
+ * Spi clock polarity
+ */
+typedef enum {
+    K_SPI_CPOL_LOW = 0,
+    K_SPI_CPOL_HIGH
+} SPIClockPolarity;
+
+/**
+ * Spi clock phase
+ */
+typedef enum {
+    K_SPI_CPHA_1EDGE = 0,
+    K_SPI_CPHA_2EDGE
+} SPIClockPhase;
+
+/**
+ * Spi first bit order/endianess
+ */
+typedef enum {
+    K_SPI_FIRSTBIT_MSB = 0,
+    K_SPI_FIRSTBIT_LSB
+} SPIFirstBit;
+
+/**
  * Spi status values
  */
 typedef enum {
@@ -107,6 +137,9 @@ typedef struct {
     SPIRole role;
     SPIDirection direction;
     SPIDataSize data_size;
+    SPIClockPhase clock_phase;
+    SPIClockPolarity clock_polarity;
+    SPIFirstBit first_bit;
     uint32_t speed;
 } KSPIConf;
 
